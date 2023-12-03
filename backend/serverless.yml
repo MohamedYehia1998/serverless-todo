@@ -1,0 +1,112 @@
+service: serverless-todo-app
+
+frameworkVersion: '3'
+	
+plugins:
+  - serverless-iam-roles-per-function
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  environment:
+    TODOS_TABLE: TodosTable
+    TODOS_CREATED_AT_INDEX: userId_createdAt
+    TODOS_BUCKET: todos-bucket-718278asdjasjehwqei2q
+    REGION: us-east-1
+  tracing:
+    lambda: true
+    apiGateway: true
+
+
+functions:
+
+  Auth:
+    handler: src/lambda/auth/auth0Authorizer.handler
+
+  GetTodos:
+    handler: src/lambda/http/getTodos.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: ${self:custom.TodosTable.arn}
+    events:
+      - http:
+          method: GET
+          cors: true
+          authorizer: Auth
+          path: /todos
+
+  CreateTodo:
+    handler: src/lambda/http/createTodo.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+        Resource: ${self:custom.TodosTable.arn}
+    events:
+      - http:
+          method: POST
+          cors: true
+          authorizer: Auth
+          path: /todos
+
+  UpdateTodo:
+    handler: src/lambda/http/updateTodo.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
+          - dynamodb:GetItem
+        Resource: ${self:custom.TodosTable.arn}
+    events:
+      - http:
+          method: patch
+          cors: true
+          authorizer: Auth
+          path: todos/{todoId}
+
+  DeleteTodo:
+    handler: src/lambda/http/deleteTodo.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:DeleteItem
+          - dynamodb:GetItem
+        Resource: ${self:custom.TodosTable.arn}
+    events:
+      - http:
+          method: delete
+          cors: true
+          authorizer: Auth
+          path: todos/{todoId}
+
+  GenerateUploadUrl:
+    handler: src/lambda/http/generateUploadUrl.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:DeleteItem
+          - dynamodb:UpdateItem
+          - dynamodb:GetItem
+        Resource: ${self:custom.TodosTable.arn}
+    events:
+      - http:
+          method: post
+          cors: true
+          authorizer: Auth
+          path: todos/{todoId}/attachment
+
+resources:
+  Resources:
+    TodosTable: ${file(src/resources/todosTable.yml):TodosTable}
+    TodosBucket: ${file(src/resources/todosBucket.yml):TodosBucket}
+    BucketPolicy: ${file(src/resources/todosBucket.yml):BucketPolicy}
+
+# source of truth for all information about resources
+custom:
+  TodosTable:
+    name: !Ref TodosTable
+    arn: !GetAtt TodosTable.Arn
+  TodosBucket:
+    name: ${self:provider.environment.TODOS_BUCKET}

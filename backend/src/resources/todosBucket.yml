@@ -1,0 +1,44 @@
+#https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html#aws-properties-s3-bucket--examples
+TodosBucket:
+  Type: 'AWS::S3::Bucket'
+  Properties:
+    BucketName: ${self:custom.TodosBucket.name}
+    PublicAccessBlockConfiguration:
+      BlockPublicAcls: false
+    OwnershipControls:
+      Rules:
+        - ObjectOwnership: ObjectWriter
+    CorsConfiguration:
+      # CORS rules define which origins can make requests to your bucket's resources 
+      # and specify what methods, headers, and other settings are permitted for cross-origin access.
+      CorsRules:
+        - AllowedHeaders:
+            - '*'
+          AllowedMethods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+          AllowedOrigins:
+            - '*'
+#https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-policy.html#aws-properties-s3-policy--examples
+BucketPolicy:
+  Type: 'AWS::S3::BucketPolicy'
+  Properties:
+    Bucket: ${self:custom.TodosBucket.name}
+    PolicyDocument:
+    # If we don't quote the Version. 
+    #Then, the Serverless framework thinks this is a date, 
+    # generating the following in the CloudFormation template: "Version": "2012-10-17T00:00:00.000Z" instead of just: "Version": "2012-10-17".
+    #This error makes the Cloudformation service stay forever in the CREATE_IN_PROGRESS state for the resource. 
+    #Even though it should return a validation error.
+      Version: '2012-10-17' # IMPORTANT ---> See this is now quoted
+      Statement:
+        - Action:
+            - 's3:GetObject'
+            - 's3:PutObject'
+            - 's3:PutObjectAcl'
+            - 's3:DeleteObject'
+          Effect: Allow
+          Resource: arn:aws:s3:::${self:custom.TodosBucket.name}/*
+          Principal: '*'

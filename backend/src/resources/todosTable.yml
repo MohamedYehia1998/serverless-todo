@@ -1,0 +1,28 @@
+# Todo keys: ["todoId","userId","attachmentUrl","dueDate","createdAt","name","done"]
+# But DynamoDB is schemaless, so we define attributes relevant to our indexes only
+TodosTable:
+  Type: AWS::DynamoDB::Table
+  Properties:
+    TableName: ${self:provider.environment.TODOS_TABLE}
+    AttributeDefinitions:
+    - AttributeName: userId
+      AttributeType: S
+    - AttributeName: todoId
+      AttributeType: S
+    - AttributeName: createdAt
+      AttributeType: S
+    KeySchema:
+    - AttributeName: userId
+      KeyType: HASH
+    - AttributeName: todoId
+      KeyType: RANGE
+    BillingMode: PAY_PER_REQUEST
+    LocalSecondaryIndexes:
+    - IndexName: ${self:provider.environment.TODOS_CREATED_AT_INDEX}
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+      Projection:
+        ProjectionType: ALL # What attributes will be copied to an index
